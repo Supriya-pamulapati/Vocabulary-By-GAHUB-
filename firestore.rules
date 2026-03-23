@@ -1,0 +1,134 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required) - Firebase Auth UID
+    //   - email: string (required) - User email
+    //   - displayName: string (optional) - User display name
+    //   - xp: number (required) - Total experience points
+    //   - level: number (required) - Current level
+    //   - streak: number (required) - Current daily streak count
+    //   - lastActive: string (optional) - Last activity timestamp
+    //   - dailyGoal: number (optional) - Daily word goal
+    //   - wordsLearnedToday: number (optional) - Words learned in the current day
+    //
+    // Collection: users/{userId}/words
+    // Document ID: {wordId}
+    // Fields:
+    //   - userId: string (required) - Owner's UID
+    //   - word: string (required) - The word itself
+    //   - meaning: string (required) - Definition of the word
+    //   - synonyms: list (optional) - List of synonyms
+    //   - antonyms: list (optional) - List of antonyms
+    //   - nextReview: string (required) - Next scheduled review date
+    //   - interval: number (optional) - Current review interval in days
+    //   - repetition: number (optional) - Number of successful repetitions
+    //   - easeFactor: number (optional) - Ease factor for spaced repetition
+    //   - status: string (required) - Learning status (new, learning, mastered)
+    //   - createdAt: string (optional) - Creation timestamp
+    //
+    // ===============================================================
+
+    // Collection: users_public
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (optional)
+    //   - photoURL: string (optional)
+    //   - xp: number (required)
+    //   - level: number (required)
+    //   - streak: number (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "saisupriya691@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'xp', 'level', 'streak']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.email is string && data.email.size() > 0 &&
+             data.xp is number && data.xp >= 0 &&
+             data.level is number && data.level >= 1 &&
+             data.streak is number && data.streak >= 0 &&
+             (!('totalWordsLearned' in data) || (data.totalWordsLearned is number && data.totalWordsLearned >= 0)) &&
+             (!('totalWordsMastered' in data) || (data.totalWordsMastered is number && data.totalWordsMastered >= 0)) &&
+             (!('achievements' in data) || (data.achievements is list));
+    }
+
+    function isValidPublicProfile(data) {
+      return data.keys().hasAll(['uid', 'xp', 'level', 'streak']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.xp is number && data.xp >= 0 &&
+             data.level is number && data.level >= 1 &&
+             data.streak is number && data.streak >= 0 &&
+             (!('totalWordsLearned' in data) || (data.totalWordsLearned is number && data.totalWordsLearned >= 0)) &&
+             (!('totalWordsMastered' in data) || (data.totalWordsMastered is number && data.totalWordsMastered >= 0)) &&
+             (!('achievements' in data) || (data.achievements is list));
+    }
+
+    function isValidWord(data) {
+      return data.keys().hasAll(['userId', 'word', 'meaning', 'nextReview', 'status']) &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.word is string && data.word.size() > 0 && data.word.size() < 100 &&
+             data.meaning is string && data.meaning.size() > 0 && data.meaning.size() < 2000 &&
+             data.nextReview is string &&
+             data.status in ['new', 'learning', 'mastered'] &&
+             (!('isStarred' in data) || (data.isStarred is bool)) &&
+             (!('difficulty' in data) || (data.difficulty in ['easy', 'medium', 'hard'])) &&
+             (!('exampleSentence' in data) || (data.exampleSentence is string && data.exampleSentence.size() < 1000));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users_public/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidPublicProfile(request.resource.data);
+      allow update: if isOwner(userId) && isValidPublicProfile(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+
+      match /words/{wordId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidWord(request.resource.data);
+        allow update: if isOwner(userId) && isValidWord(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

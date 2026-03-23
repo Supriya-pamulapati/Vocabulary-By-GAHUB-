@@ -1,0 +1,101 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile data including gamification stats",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "User email" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "photoURL": { "type": "string", "description": "User profile picture URL" },
+        "xp": { "type": "integer", "description": "Total experience points" },
+        "level": { "type": "integer", "description": "Current level" },
+        "streak": { "type": "integer", "description": "Current daily streak count" },
+        "lastActive": { "type": "string", "format": "date-time", "description": "Last activity timestamp" },
+        "dailyGoal": { "type": "integer", "description": "Daily word goal" },
+        "wordsLearnedToday": { "type": "integer", "description": "Words learned in the current day" },
+        "totalWordsLearned": { "type": "integer", "description": "Total words learned ever" },
+        "totalWordsMastered": { "type": "integer", "description": "Total words mastered" },
+        "achievements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "icon": { "type": "string" },
+              "unlockedAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      },
+      "required": ["uid", "email", "xp", "level", "streak", "achievements", "totalWordsLearned", "totalWordsMastered"]
+    },
+    "PublicProfile": {
+      "title": "Public Profile",
+      "description": "Non-sensitive user data for leaderboard",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "photoURL": { "type": "string", "description": "User profile picture URL" },
+        "xp": { "type": "integer", "description": "Total experience points" },
+        "level": { "type": "integer", "description": "Current level" },
+        "streak": { "type": "integer", "description": "Current daily streak count" },
+        "totalWordsLearned": { "type": "integer", "description": "Total words learned ever" },
+        "totalWordsMastered": { "type": "integer", "description": "Total words mastered" },
+        "achievements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "icon": { "type": "string" },
+              "unlockedAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      },
+      "required": ["uid", "xp", "level", "streak", "achievements", "totalWordsLearned", "totalWordsMastered"]
+    },
+    "Word": {
+      "title": "Vocabulary Word",
+      "description": "A word in the user's vocabulary list",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner's UID" },
+        "word": { "type": "string", "description": "The word itself" },
+        "meaning": { "type": "string", "description": "Definition of the word" },
+        "synonyms": { "type": "array", "items": { "type": "string" }, "description": "List of synonyms" },
+        "antonyms": { "type": "array", "items": { "type": "string" }, "description": "List of antonyms" },
+        "exampleSentence": { "type": "string", "description": "Optional example sentence" },
+        "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"], "description": "Difficulty level" },
+        "nextReview": { "type": "string", "format": "date-time", "description": "Next scheduled review date" },
+        "interval": { "type": "integer", "description": "Current review interval in days" },
+        "repetition": { "type": "integer", "description": "Number of successful repetitions" },
+        "easeFactor": { "type": "number", "description": "Ease factor for spaced repetition" },
+        "status": { "type": "string", "enum": ["new", "learning", "mastered"], "description": "Learning status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["userId", "word", "meaning", "nextReview", "status", "difficulty"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/users_public/{userId}": {
+      "schema": "PublicProfile",
+      "description": "Public user profiles for leaderboard"
+    },
+    "/users/{userId}/words/{wordId}": {
+      "schema": "Word",
+      "description": "User's vocabulary words"
+    }
+  }
+}
